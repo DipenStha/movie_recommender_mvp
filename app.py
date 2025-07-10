@@ -74,7 +74,18 @@ else:
 sim_df = build_similarity_matrix(ratings)
 
 # --- Movie Recommendation Interface ---
-movie_list = sim_df.columns.tolist()
+# --- Average Rating Calculation ---
+average_ratings = ratings.groupby('title')['rating'].mean().round(2).sort_values(ascending=False)
+movie_list = average_ratings.index.tolist()
+
+# --- Sidebar Toggle ---
+sort_by_rating = st.sidebar.checkbox("🔽 Sort movies by rating")
+
+if sort_by_rating:
+    st.subheader("⭐ Top Rated Movies")
+    sorted_df = average_ratings.reset_index().rename(columns={"title": "🎞️ Movie Title", "rating": "⭐ Average Rating"})
+    st.table(sorted_df.head(20))
+    
 selected_movie = st.selectbox("🎬 Choose a movie", movie_list)
 num_recs = st.slider("🔢 Number of similar movies to recommend", min_value=1, max_value=10, value=5)
 
