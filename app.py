@@ -1,7 +1,8 @@
 import streamlit as st
+import pandas as pd
 from data_loader import load_data
 from recommender import build_similarity_matrix, recommend
-import pandas as pd
+
 # --- Page Config ---
 st.set_page_config(page_title="🎬 Movie Recommender", page_icon="🍿", layout="centered")
 
@@ -42,16 +43,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
 # --- Title ---
 st.markdown('<div class="title">🍿 Movie Recommender System</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Find movies similar to your favorite titles!</div>', unsafe_allow_html=True)
 
-
-
+# --- Sidebar Option ---
 data_source = st.sidebar.radio("Choose Data Source", ["Use Default Dataset", "Upload Your Own"])
 
-# --- Load Data ---
+# --- Load Ratings Data ---
 if data_source == "Use Default Dataset":
     with st.spinner("📡 Loading default MovieLens dataset..."):
         ratings = load_data()
@@ -75,18 +74,28 @@ avg_ratings.columns = ['title', 'average_rating']
 # --- Build Similarity Matrix ---
 sim_df = build_similarity_matrix(ratings)
 
-# --- Movie Recommendation Interface ---
+# --- Movie Picker ---
 movie_list = sim_df.columns.tolist()
 selected_movie = st.selectbox("🎬 Choose a movie", movie_list)
 num_recs = st.slider("🔢 Number of similar movies to recommend", min_value=1, max_value=10, value=5)
 
-# --- Recommend Button + Display Table ---
+# --- Sort Selection (Persistent) ---
+if "sort_by" not in st.session_state:
+    st.session_state.sort_by = '📊 Similarity Score'
+
+st.session_state.sort_by = st.selectbox(
+    "📌 Sort Recommendations By",
+    ['📊 Similarity Score', '⭐ Average Rating'],
+    index=['📊 Similarity Score', '⭐ Average Rating'].index(st.session_state.sort_by)
+)
+
+# --- Recommend & Display ---
 if st.button("🚀 Get Recommendations"):
     recs = recommend(selected_movie, sim_df, num_recs)
     if not recs.empty:
         st.success(f"📽️ Top {num_recs} movies similar to *{selected_movie}*")
 
-             # Prepare DataFrame
+        # Prepare DataFrame
         recs_df = recs.reset_index()
         recs_df.columns = ['title', 'similarity_score']
         recs_df['similarity_score'] = recs_df['similarity_score'].round(2)
@@ -99,14 +108,15 @@ if st.button("🚀 Get Recommendations"):
             'average_rating': '⭐ Average Rating'
         })
 
-        # Sort Option
-        sort_by = st.selectbox("📌 Sort Recommendations By", ['📊 Similarity Score', '⭐ Average Rating'])
-        recs_df = recs_df.sort_values(by=sort_by, ascending=False)
+        # Sort based on selection
+        recs_df = recs_df.sort_values(by=st.session_state.sort_by, ascending=False)
 
         # Display as styled sortable table
         st.dataframe(recs_df.reset_index(drop=True), use_container_width=True)
+
     else:
         st.warning("😕 No similar movies found. Try another title.")
+
 
 # with st.spinner("🎥 Loading movie data..."):
 #     ratings = load_data()
