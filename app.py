@@ -68,24 +68,15 @@ else:
         st.warning("⚠️ Please upload a CSV file.")
         st.stop()
 
-
+# --- Compute Average Ratings ---
+avg_ratings = ratings.groupby('title')['rating'].mean().reset_index()
+avg_ratings.columns = ['title', 'average_rating']
 
 # --- Build Similarity Matrix ---
 sim_df = build_similarity_matrix(ratings)
 
 # --- Movie Recommendation Interface ---
-# --- Average Rating Calculation ---
-average_ratings = ratings.groupby('title')['rating'].mean().round(2).sort_values(ascending=False)
-movie_list = average_ratings.index.tolist()
-
-# --- Sidebar Toggle ---
-sort_by_rating = st.sidebar.checkbox("🔽 Sort movies by rating")
-
-if sort_by_rating:
-    st.subheader("⭐ Top Rated Movies")
-    sorted_df = average_ratings.reset_index().rename(columns={"title": "🎞️ Movie Title", "rating": "⭐ Average Rating"})
-    st.table(sorted_df.head(20))
-    
+movie_list = sim_df.columns.tolist()
 selected_movie = st.selectbox("🎬 Choose a movie", movie_list)
 num_recs = st.slider("🔢 Number of similar movies to recommend", min_value=1, max_value=10, value=5)
 
@@ -95,14 +86,27 @@ if st.button("🚀 Get Recommendations"):
     if not recs.empty:
         st.success(f"📽️ Top {num_recs} movies similar to *{selected_movie}*")
 
+             # Prepare DataFrame
         recs_df = recs.reset_index()
-        recs_df.columns = ['🎞️ Movie Title', '📊 Similarity Score']
-        recs_df['📊 Similarity Score'] = recs_df['📊 Similarity Score'].round(2)
+        recs_df.columns = ['title', 'similarity_score']
+        recs_df['similarity_score'] = recs_df['similarity_score'].round(2)
 
-        st.table(recs_df)
+        # Merge with average ratings
+        recs_df = recs_df.merge(avg_ratings, on='title', how='left')
+        recs_df = recs_df.rename(columns={
+            'title': '🎞️ Movie Title',
+            'similarity_score': '📊 Similarity Score',
+            'average_rating': '⭐ Average Rating'
+        })
+
+        # Sort Option
+        sort_by = st.selectbox("📌 Sort Recommendations By", ['📊 Similarity Score', '⭐ Average Rating'])
+        recs_df = recs_df.sort_values(by=sort_by, ascending=False)
+
+        # Display as styled sortable table
+        st.dataframe(recs_df.reset_index(drop=True), use_container_width=True)
     else:
         st.warning("😕 No similar movies found. Try another title.")
-
 
 # with st.spinner("🎥 Loading movie data..."):
 #     ratings = load_data()
