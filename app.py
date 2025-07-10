@@ -84,19 +84,13 @@ if st.button("🚀 Get Recommendations"):
     if not recs.empty:
         st.success(f"📽️ Top {num_recs} movies similar to *{selected_movie}*")
 
-         # Create a styled and sortable table
         recs_df = recs.reset_index()
         recs_df.columns = ['🎞️ Movie Title', '📊 Similarity Score']
         recs_df['📊 Similarity Score'] = recs_df['📊 Similarity Score'].round(2)
 
-        st.dataframe(
-            recs_df.style
-            .background_gradient(cmap='Reds', subset=['📊 Similarity Score'])
-            .set_properties(**{'text-align': 'left'}),
-            use_container_width=True
-        )
+        st.table(recs_df)
     else:
-        st.warning("No similar movies found. Try another movie.")
+        st.warning("😕 No similar movies found. Try another title.")
 
 
 # with st.spinner("🎥 Loading movie data..."):
